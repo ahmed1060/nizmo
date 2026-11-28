@@ -960,6 +960,10 @@ These are built once, in the building-blocks PR, and every page uses them
     asks first, as it can't be undone. One a task has used is archived,
     never deleted, so its tasks keep it; a client's HQ is neither, as
     before (`LATER_CHANGES_PLAN.md` §7.21).
+    - Deleting is a permission of its own, Delete locations, beside
+      Archive and restore locations in the role editor's Clients: each
+      item is in the menu for whoever holds its own. Holding only one,
+      the other isn't there.
   - Where something already has a retired item, such as a terminal whose
     brand was retired, its picker keeps it chosen, with "(retired)" after
     its name, so saving other changes leaves it as it is. It's the only
@@ -4042,3 +4046,7 @@ changed:
   shown only in its own form, Add location and Edit location, and the
   default it takes is the system's distance; a client's form has its
   HQ's name and pin alone (`LATER_CHANGES_PLAN.md` §7.22).
+- **2026-11-28:** Row menu (§5.5): deleting a location is a permission
+  of its own, Delete locations, beside Archive and restore locations, as
+  the owner asked; each item is for whoever holds its own
+  (`LATER_CHANGES_PLAN.md` §7.21).
