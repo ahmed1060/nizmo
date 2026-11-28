@@ -15,9 +15,9 @@ import type { CreateLocationInput, PlaceInput, UpdateLocationInput } from "@/lib
  * with locations.view, add one with locations.create (locations.add until
  * PR 378), change one (its details, or making it an HQ) with locations.edit,
  * and archive or restore one with locations.archive (split from
- * locations.manage, LATER_CHANGES_PLAN.md §2, PR 377), or delete one no
- * task has used with it too (§7.21, PR 450). Another company's is "not
- * found", never "not allowed".
+ * locations.manage, LATER_CHANGES_PLAN.md §2, PR 377), and delete one no
+ * task has used with locations.delete (§7.21, PR 450). Another company's
+ * is "not found", never "not allowed".
  *
  * Until step 2 moves tasks onto locations, the task form still copies a
  * client's own location fields into a new task: those follow its HQ here
@@ -254,8 +254,9 @@ export class LocationService {
 
     /**
      * Deletes a location no task has used (LATER_CHANGES_PLAN.md §7.21, PR
-     * 450), for whoever may archive locations: one a task has used is
-     * archived instead, so its tasks keep it, and a client's HQ is neither.
+     * 450), for whoever may delete locations, a permission of its own: one a
+     * task has used is archived instead, so its tasks keep it, and a
+     * client's HQ is neither.
      * Its row is held while it's checked and deleted: a task being added
      * at it meanwhile is waited for and keeps it, and one added after waits
      * and finds it gone (forTask). In the audit log, as it was.
@@ -264,7 +265,7 @@ export class LocationService {
         const who = actor(session)
         const found = await prisma.location.findUnique({ where: { id }, select: { companyId: true } })
         if (!found) throw new Error("TASK_LOCATION_NOT_FOUND")
-        allow(session, "locations.archive", found.companyId)
+        allow(session, "locations.delete", found.companyId)
         await prisma.$transaction(async tx => {
             // Made its client's HQ meanwhile, it's waited for and read as one.
             const held = await tx.$queryRaw<{ id: string }[]>`SELECT id FROM "Location" WHERE id = ${id} FOR UPDATE`

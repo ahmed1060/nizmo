@@ -67,15 +67,19 @@ function renamed(): Record<string, string> {
     }
 }
 
-// A later one giving a permission to every role holding another, the built-in
+// Later ones giving a permission to every role holding another, the built-in
 // ones among them: Answer access reviews, to whoever has Assign roles
-// (LATER_CHANGES_PLAN.md §7.15, PR 439). Read out of its SQL too.
-const GIVEN_TO_HOLDERS = (() => {
-    const sql = readFileSync("prisma/migrations/20270127000000_access_review_permission/migration.sql", "utf8")
+// (LATER_CHANGES_PLAN.md §7.15, PR 439), and Delete locations, to whoever has
+// Archive and restore locations (§7.21, PR 450). Read out of their SQL too.
+const GIVEN_TO_HOLDERS = [
+    "20270127000000_access_review_permission",
+    "20270202000000_location_delete_permission",
+].map(name => {
+    const sql = readFileSync(`prisma/migrations/${name}/migration.sql`, "utf8")
     const given = sql.match(/SELECT g\."roleId", '([a-z_.]+)', '(\w+)'::"PermissionScope"\s+FROM "RoleGrant" g WHERE g\."permission" = '([a-z_.]+)'/)
-    if (!given) throw new Error("the access review migration's grant wasn't found")
-    return [{ permission: given[1], scope: given[2], holding: given[3] }]
-})()
+    if (!given) throw new Error(`${name}'s grant wasn't found`)
+    return { permission: given[1], scope: given[2], holding: given[3] }
+})
 
 function seeded(): Record<string, Record<string, string>> {
     const out: Record<string, Record<string, string>> = {}
@@ -86,7 +90,11 @@ function seeded(): Record<string, Record<string, string>> {
             ;(out[role] ??= {})[rename[permission] ?? permission] = scope
         }
     }
-    for (const grants of Object.values(out)) for (const { permission, scope, holding } of GIVEN_TO_HOLDERS) if (grants[holding]) grants[permission] = scope
+    // Held as itself, or as a part the split since wrote (PR 385): Delete
+    // locations reads Archive and restore locations, which the split wrote
+    // where Manage locations was, as it ran first in production.
+    const holds = (grants: Record<string, string>, holding: string) => !!grants[holding] || Object.keys(grants).some(old => (SPLIT_INTO[old] ?? []).includes(holding))
+    for (const grants of Object.values(out)) for (const { permission, scope, holding } of GIVEN_TO_HOLDERS) if (holds(grants, holding)) grants[permission] = scope
     return out
 }
 

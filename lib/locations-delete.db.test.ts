@@ -2,12 +2,13 @@ import { describe, it, expect, beforeAll, afterAll, vi } from "vitest"
 import { readFileSync, readdirSync } from "node:fs"
 import { Client } from "pg"
 import { withGrants } from "@/lib/permissions/test-actors"
+import { encodeGrants } from "@/lib/permissions/grants"
 
 /**
  * Deleting a location no task has used (LATER_CHANGES_PLAN.md §7.21;
  * DESIGN.md §5.5, Row menu), against a real Postgres: which locations a
- * task has used, deleting one, what keeps one, and a task added at one
- * while it's being deleted.
+ * task has used, deleting one, who may, what keeps one, and a task added
+ * at one while it's being deleted.
  *
  * Needs a Postgres it may create databases on: set ROLES_TEST_DATABASE_URL to
  * its maintenance database. Skipped without it (CI has no database).
@@ -48,6 +49,7 @@ INSERT INTO "Location"(id, "companyId", "clientId", name, "isHq", latitude, long
  ('race-edit', 'c1', NULL, 'Quay', false, 30.5, 31.5, NULL, NULL, now()),
  ('race-late', 'c1', NULL, 'Pier', false, 30.6, 31.6, NULL, NULL, now()),
  ('twice', 'c1', NULL, 'Jetty', false, 30.7, 31.7, NULL, NULL, now()),
+ ('kiosk', 'c1', NULL, 'Kiosk', false, 30.8, 31.8, NULL, NULL, now()),
  ('theirs', 'c2', 'k9', 'Far away', true, 25.7, 32.6, NULL, NULL, now()),
  ('their-shed', 'c2', NULL, 'Shed', false, 25.8, 32.7, NULL, NULL, now());
 INSERT INTO "Task"(id, title, description, status, deadline, "companyId", "clientId", "locationId", "updatedAt") VALUES
@@ -59,6 +61,10 @@ const admin = { user: withGrants({ id: "a1", role: "ADMIN", companyId: "c1", nam
 // A Team Leader may add locations, never archive or delete them.
 const leader = { user: withGrants({ id: "l1", role: "TEAM_LEADER", companyId: "c1" }) } as any
 const otherAdmin = { user: withGrants({ id: "a2", role: "ADMIN", companyId: "c2" }) } as any
+// Deleting is a permission of its own (§7.21): someone who may only archive
+// locations, and someone who may only delete them.
+const archiver = { user: { id: "e1", role: "EMPLOYEE", companyId: "c1", grants: encodeGrants({ "locations.view": "COMPANY", "locations.archive": "COMPANY" }) } } as any
+const deleter = { user: { id: "e1", role: "EMPLOYEE", companyId: "c1", grants: encodeGrants({ "locations.view": "COMPANY", "locations.delete": "COMPANY" }) } } as any
 const superAdmin = { user: { id: "sa1", role: "SUPER_ADMIN", companyId: null } } as any
 
 const later = () => new Date(Date.now() + 2 * 86_400_000).toISOString()
@@ -144,8 +150,16 @@ describe.skipIf(!ADMIN_URL)("deleting a location, in Postgres", () => {
         expect((await db.query(`SELECT count(*)::int AS n FROM "AuditLog" WHERE action = 'DELETE_LOCATION' AND "entityId" IN ('acme-used', 'acme-hq')`)).rows[0].n).toBe(0)
     })
 
-    it("is for whoever may archive locations: refused to anyone else, another company's not found, and a Super Admin's for any company", async () => {
+    it("is for whoever may delete locations, not whoever may only archive them: refused to anyone else, another company's not found, and a Super Admin's for any company", async () => {
         await expect(Locations.delete(leader, "anchor")).rejects.toMatchObject({ message: "TASK_LOCATION_FORBIDDEN" })
+        await expect(Locations.delete(archiver, "kiosk")).rejects.toMatchObject({ message: "TASK_LOCATION_FORBIDDEN" })
+        expect(await exists("kiosk")).toBe(true)
+        await Locations.delete(deleter, "kiosk")
+        expect(await exists("kiosk")).toBe(false)
+        // And archiving stays Archive and restore locations', not Delete locations'.
+        await expect(Locations.update(deleter, { id: "anchor", archived: true })).rejects.toMatchObject({ message: "TASK_LOCATION_FORBIDDEN" })
+        await Locations.update(archiver, { id: "anchor", archived: true })
+        await Locations.update(archiver, { id: "anchor", archived: false })
         await expect(Locations.delete(otherAdmin, "race-add")).rejects.toMatchObject({ message: "TASK_LOCATION_NOT_FOUND" })
         await expect(Locations.delete(admin, "nowhere")).rejects.toMatchObject({ message: "TASK_LOCATION_NOT_FOUND" })
         expect(await exists("race-add")).toBe(true)

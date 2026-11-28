@@ -64,12 +64,12 @@ export const PUT = withStandardHandler(async (_req, session, json) => {
 
 /**
  * Deleting a location no task has used (LATER_CHANGES_PLAN.md §7.21, PR
- * 450): locations.archive's, as archiving is. LocationService checks it
- * against the location's company, and keeps one a task has used.
+ * 450): locations.delete's, a permission of its own. LocationService checks
+ * it against the location's company, and keeps one a task has used.
  */
 export const DELETE = withStandardHandler(async (req, session) => {
     const id = new URL(req.url).searchParams.get("id")
     if (!id) return ApiResponse.badRequest("ID required")
     await LocationService.delete(session, id)
     return ApiResponse.success({ deleted: true })
-}, { permission: "locations.archive" })
+}, { permission: "locations.delete" })

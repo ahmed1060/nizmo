@@ -111,10 +111,12 @@ export default function LocationsList({ clientId, adding = false, onAddingChange
 
     const canAdd = can('locations.create')
     // Split from Manage locations (PR 377): editing one and making it an HQ,
-    // and archiving or restoring one.
+    // and archiving or restoring one; and deleting one no task has used, a
+    // permission of its own (PR 450).
     const canEdit = can('locations.edit')
     const canArchive = can('locations.archive')
-    const changes = canEdit || canArchive
+    const canDelete = can('locations.delete')
+    const changes = canEdit || canArchive || canDelete
 
     /** A change from the row's menu: making it the HQ, archiving it, or restoring it. */
     const change = async (l: LocationItem, body: { hq?: true; archived?: boolean }, done: TranslationKey) => {
@@ -180,7 +182,7 @@ export default function LocationsList({ clientId, adding = false, onAddingChange
         restore: { key: 'restore', label: t('locations_restore'), icon: ArrowCounterClockwiseIcon, onSelect: () => { void change(l, { archived: false }, 'locations_restored') } },
         delete: { key: 'delete', label: t('locations_delete'), icon: TrashIcon, danger: true, onSelect: () => setToDelete(l) },
     } satisfies Record<LocationAction, MenuItem>)[action]
-    const menu = (l: LocationItem): MenuItem[] => locationActions(l, { edit: canEdit, archive: canArchive }).map(action => item(l, action))
+    const menu = (l: LocationItem): MenuItem[] => locationActions(l, { edit: canEdit, archive: canArchive, delete: canDelete }).map(action => item(l, action))
     const actions = (l: LocationItem) => menu(l).length > 0 && (
         <span className="ui-row-actions">
             <RowMenu label={t('ui_more_actions_for').replace('{name}', l.name)} tooltip={t('ui_more_actions')} items={menu(l)} />

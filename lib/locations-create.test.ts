@@ -61,7 +61,7 @@ describe("the catalogue", () => {
     it("offers locations.create in the role editor, where Add locations was, and locations.add no more", () => {
         const group = PERMISSION_GROUPS.find(g => g.key === "clients")!.permissions
         const all = PERMISSION_GROUPS.flatMap(g => g.permissions)
-        expect(group.filter(p => p.startsWith("locations."))).toEqual(["locations.view", "locations.create", "locations.edit", "locations.archive"])
+        expect(group.filter(p => p.startsWith("locations."))).toEqual(["locations.view", "locations.create", "locations.edit", "locations.archive", "locations.delete"])
         expect(all).not.toContain("locations.add")
     })
 

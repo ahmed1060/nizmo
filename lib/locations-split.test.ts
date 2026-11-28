@@ -217,16 +217,16 @@ describe("the Locations list's row menu", () => {
     const hq = { ...branch, isHq: true }
     const shared = { ...branch, client: null }
     const archived = { ...branch, archivedAt: "2026-11-01" }
-    const both = { edit: true, archive: true }
+    const both = { edit: true, archive: true, delete: false }
 
     it("offers editing and making it the HQ with locations.edit", () => {
-        expect(locationActions(branch, { edit: true, archive: false })).toEqual(["edit", "hq"])
+        expect(locationActions(branch, { edit: true, archive: false, delete: false })).toEqual(["edit", "hq"])
     })
 
     it("offers archiving with locations.archive, and restoring an archived one", () => {
-        expect(locationActions(branch, { edit: false, archive: true })).toEqual(["archive"])
-        expect(locationActions(archived, { edit: false, archive: true })).toEqual(["restore"])
-        expect(locationActions(archived, { edit: true, archive: false })).toEqual([])
+        expect(locationActions(branch, { edit: false, archive: true, delete: false })).toEqual(["archive"])
+        expect(locationActions(archived, { edit: false, archive: true, delete: false })).toEqual(["restore"])
+        expect(locationActions(archived, { edit: true, archive: false, delete: false })).toEqual([])
     })
 
     it("offers all three to whoever holds both, as before", () => {
@@ -235,7 +235,7 @@ describe("the Locations list's row menu", () => {
 
     it("never archives a client's HQ, nor makes a shared one an HQ", () => {
         expect(locationActions(hq, both)).toEqual(["edit"])
-        expect(locationActions(hq, { edit: false, archive: true })).toEqual([])
+        expect(locationActions(hq, { edit: false, archive: true, delete: false })).toEqual([])
         expect(locationActions(shared, both)).toEqual(["edit", "archive"])
     })
 
@@ -243,8 +243,8 @@ describe("the Locations list's row menu", () => {
         const list = stripComments(readFileSync("components/locations/LocationsList.tsx", "utf8"))
         expect(list).toContain("const canEdit = can('locations.edit')")
         expect(list).toContain("const canArchive = can('locations.archive')")
-        expect(list).toContain("locationActions(l, { edit: canEdit, archive: canArchive })")
-        expect(list).toContain("const changes = canEdit || canArchive")
+        expect(list).toContain("locationActions(l, { edit: canEdit, archive: canArchive, delete: canDelete })")
+        expect(list).toContain("const changes = canEdit || canArchive || canDelete")
         expect(list).toMatch(/const actions = \(l: LocationItem\) => menu\(l\)\.length > 0 && \(/)
         expect(list).toContain("...(changes ? [{ key: 'actions'")
         expect(list).toContain("foot={changes ? <>{actions(l)}</> : undefined}")
@@ -255,9 +255,9 @@ describe("the Locations list's row menu", () => {
 describe("the words", () => {
     it("name each part in both languages", () => {
         expect(en.perm_locations_edit).toBe("Edit locations and pick a client's HQ")
-        // And deleting one no task has used, since §7.21.
-        expect(en.perm_locations_archive).toBe("Archive, restore and delete locations")
+        // Deleting one is a permission of its own since §7.21: lib/locations-delete.test.ts.
+        expect(en.perm_locations_archive).toBe("Archive and restore locations")
         expect(ar.perm_locations_edit).toBe("تعديل المواقع واختيار المقر الرئيسي للعميل")
-        expect(ar.perm_locations_archive).toBe("أرشفة المواقع واستعادتها وحذفها")
+        expect(ar.perm_locations_archive).toBe("أرشفة المواقع واستعادتها")
     })
 })

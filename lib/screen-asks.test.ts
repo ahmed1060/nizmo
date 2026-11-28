@@ -81,9 +81,9 @@ const CHARGE_COLLECT = ["const canCollect = can('charges.collect')", "{canCollec
 const CHARGE_UNCOLLECT = ["const canCollect = can('charges.collect')", "? (canCollect ? [{ key: 'uncollect'"]
 // A client's people: seen with client_accounts.view, each change with its own part (PR 381).
 const PEOPLE_MAY = "const may = { invite: can('client_accounts.invite'), remove: can('client_accounts.remove') }"
-const LOCATION_CHANGE = ["const canEdit = can('locations.edit')", "const canArchive = can('locations.archive')", "locationActions(l, { edit: canEdit, archive: canArchive })"]
+const LOCATION_CHANGE = ["const canEdit = can('locations.edit')", "const canArchive = can('locations.archive')", "locationActions(l, { edit: canEdit, archive: canArchive, delete: canDelete })"]
 // Deleting one no task has used, offered with archiving (LATER_CHANGES_PLAN.md §7.21, PR 450).
-const LOCATION_DELETE = ["const canArchive = can('locations.archive')", "locationActions(l, { edit: canEdit, archive: canArchive })"]
+const LOCATION_DELETE = ["const canDelete = can('locations.delete')", "locationActions(l, { edit: canEdit, archive: canArchive, delete: canDelete })"]
 // A task's place (components/locations/TaskPlacePicker.tsx): its client and places for whoever sees them, a new place for whoever adds them.
 const TASK_PLACE_CLIENTS = ["const seesClients = can('clients.view')", "const clients = useClientOptions(choosing && can('clients.view'))"]
 const TASK_PLACE_LOCATIONS = "const seesLocations = can('locations.view')"
@@ -634,7 +634,7 @@ const SCREENS: Record<string, Screen> = {
             "GET /api/locations": needs("locations.view"),
             "POST /api/locations": when("locations.create", "adding={adding && can('locations.create')}"),
             "PUT /api/locations": when(["locations.edit", "locations.archive"], ...LOCATION_CHANGE),
-            "DELETE /api/locations": when("locations.archive", ...LOCATION_DELETE),
+            "DELETE /api/locations": when("locations.delete", ...LOCATION_DELETE),
             // The client a place is for, and the list's client filter.
             "GET /api/clients": when("clients.view", ...CLIENT_PICKERS),
             "GET /api/companies": superAdmin(LOCATION_COMPANY),
@@ -715,7 +715,7 @@ const SCREENS: Record<string, Screen> = {
             "GET /api/locations": when("locations.view", "const seesLocations = can('locations.view')", "{seesLocations && ("),
             "POST /api/locations": when("locations.create", "adding={!archived && addingLocation && can('locations.create')}"),
             "PUT /api/locations": when(["locations.edit", "locations.archive"], ...LOCATION_CHANGE),
-            "DELETE /api/locations": when("locations.archive", ...LOCATION_DELETE),
+            "DELETE /api/locations": when("locations.delete", ...LOCATION_DELETE),
             "GET /api/charges": when("charges.view", "const seesCharges = can('charges.view')", "{seesCharges && <ChargesList client={{ id, name }} />}"),
             "PATCH /api/charges/[x]": when("charges.set", ...CHARGE_FEE),
             "POST /api/charges/collect": when("charges.collect", ...CHARGE_COLLECT),
