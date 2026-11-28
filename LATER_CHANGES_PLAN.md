@@ -3316,3 +3316,11 @@ or editing the location", showing the Edit location form.
   locations.archive's. Its migration gives it to every role and template
   holding locations.archive; locations.archive is Archive and restore
   locations again. In #450. `DESIGN.md` first, in its own commit.
+- **2026-11-28:** §7.21's permission of its own built (#450):
+  locations.delete, Delete locations (code 96; the catalogue's version
+  17), beside locations.archive, which is Archive and restore locations
+  again. The row menu, the route and the service each ask for it, so
+  holding only one, the other isn't offered. Its migration gives it to
+  every role and template holding locations.archive, the built-in
+  Admin's among them, and the roles it changes reload once. 27 more
+  controls, each caught by a test.
