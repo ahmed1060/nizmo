@@ -30,6 +30,8 @@ describe("permission codes", () => {
         "payroll.mark_paid": 42, "debts.view": 44, "debts.waive": 45,
         "settings.view": 46, "settings.edit": 47, "audit.view": 48,
         "locations.view": 55, "locations.edit": 79, "locations.archive": 80, "locations.create": 81,
+        // Deleting a location, a permission of its own (LATER_CHANGES_PLAN.md §7.21, PR 450).
+        "locations.delete": 96,
         "lists.add": 58, "lists.rename": 82, "lists.merge": 83, "lists.archive": 84,
         "charges.view": 60, "charges.collect": 62, "charges.set": 85,
         "cash_advances.view": 63, "cash_advances.give": 64,

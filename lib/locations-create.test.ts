@@ -23,7 +23,8 @@ vi.setConfig({ testTimeout: 120_000 })
 
 const added: Record<string, any> = {}
 const locationModel = {
-    findUnique: async ({ where }: any) => (added[where.id] ? { ...added[where.id], createdAt: new Date(0), client: null, company: { name: "c1" } } : null),
+    // As the database answers the row's select, with how many tasks have used it (§7.21).
+    findUnique: async ({ where }: any) => (added[where.id] ? { ...added[where.id], createdAt: new Date(0), client: null, company: { name: "c1" }, _count: { tasks: 0 } } : null),
     findFirst: async () => null,
     create: async ({ data }: any) => { added.new = { id: "new", ...data }; return { id: "new" } },
 }
@@ -60,7 +61,7 @@ describe("the catalogue", () => {
     it("offers locations.create in the role editor, where Add locations was, and locations.add no more", () => {
         const group = PERMISSION_GROUPS.find(g => g.key === "clients")!.permissions
         const all = PERMISSION_GROUPS.flatMap(g => g.permissions)
-        expect(group.filter(p => p.startsWith("locations."))).toEqual(["locations.view", "locations.create", "locations.edit", "locations.archive"])
+        expect(group.filter(p => p.startsWith("locations."))).toEqual(["locations.view", "locations.create", "locations.edit", "locations.archive", "locations.delete"])
         expect(all).not.toContain("locations.add")
     })
 

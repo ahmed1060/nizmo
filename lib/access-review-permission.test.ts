@@ -21,8 +21,9 @@ const MIGRATION = "prisma/migrations/20270127000000_access_review_permission/mig
 describe("the permission", () => {
     it("is in Employees beside Assign roles, for the whole company, with See employees", () => {
         expect(PERMISSIONS["employees.review_access"]).toEqual({ code: 95, module: "EMPLOYEES", scopes: ["COMPANY"], implies: ["employees.view"] })
-        // A new permission, so tokens reload once (CATALOGUE_VERSION).
-        expect(CATALOGUE_VERSION).toBe(16)
+        // A new permission, so tokens reload once (CATALOGUE_VERSION); raised
+        // again since, for locations.delete (PR 450).
+        expect(CATALOGUE_VERSION).toBeGreaterThanOrEqual(16)
     })
 
     it("is the built-in Admin's, not a Team Leader's or an Employee's", () => {

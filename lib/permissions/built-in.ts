@@ -165,6 +165,10 @@ export const BUILT_IN_GRANTS: Record<BuiltInRole, Grants> = {
         "locations.create": "COMPANY",
         "locations.edit": "COMPANY",
         "locations.archive": "COMPANY",
+        // Deleting one no task has used, a permission of its own since PR 450
+        // (LATER_CHANGES_PLAN.md §7.21). Its migration gives it to every role
+        // that holds locations.archive.
+        "locations.delete": "COMPANY",
         // The saved lists of cost names and task titles: everyone adds a
         // name; an Admin renames, merges and archives them (CLIENTS_PLAN.md
         // §5.7), split from lists.manage since PR 379. Given to the companies

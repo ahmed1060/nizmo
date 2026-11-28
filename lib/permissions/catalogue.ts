@@ -192,11 +192,15 @@ export const PERMISSIONS = {
     // and archiving or restoring one. Each includes seeing. Adding was
     // locations.add until PR 378, which the owner asked to be named
     // locations.create as the other areas' adding is: done as a split into
-    // one, and retired in PR 386.
+    // one, and retired in PR 386. Deleting one no task has used is a
+    // permission of its own, as the owner asked (LATER_CHANGES_PLAN.md
+    // §7.21, PR 450); not high-risk, as clients.delete isn't, since nothing
+    // uses what it deletes.
     "locations.view":           { code: 55, module: "CLIENTS", scopes: COMPANY },
     "locations.create":         { code: 81, module: "CLIENTS", scopes: COMPANY, implies: ["locations.view"] },
     "locations.edit":           { code: 79, module: "CLIENTS", scopes: COMPANY, implies: ["locations.view"] },
     "locations.archive":        { code: 80, module: "CLIENTS", scopes: COMPANY, implies: ["locations.view"] },
+    "locations.delete":         { code: 96, module: "CLIENTS", scopes: COMPANY, implies: ["locations.view"] },
     "costs.view":               { code: 31, module: "COSTS", scopes: COMPANY, requires: ["employees.view"] },
     // A task's costs charged to its client (CLIENTS_PLAN.md §6.6): seeing
     // them; setting them, which is the service fee and leaving one off the
@@ -404,8 +408,11 @@ export type Permission = keyof typeof PERMISSIONS
  *
  * 16: employees.review_access (code 95, LATER_CHANGES_PLAN.md §7.15, PR 439),
  * which its own migration gives every role holding employees.assign_role.
+ *
+ * 17: locations.delete (code 96, LATER_CHANGES_PLAN.md §7.21, PR 450), which
+ * its own migration gives every role holding locations.archive.
  */
-export const CATALOGUE_VERSION = 16
+export const CATALOGUE_VERSION = 17
 
 /**
  * Permissions that no longer exist, by name, with the code each had: never

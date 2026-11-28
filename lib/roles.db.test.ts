@@ -145,6 +145,15 @@ const asParts = (rows: { permission: string; scope: string }[]) => {
     }
     return [...out].map(([permission, scope]) => ({ permission, scope }))
 }
+/**
+ * And what a migration after the split gives whoever holds one of its parts:
+ * Delete locations, to whoever holds Archive and restore locations (PR 450,
+ * LOCATION_DELETE_GRANTED).
+ */
+const withLaterGrants = (rows: { permission: string; scope: string }[]) =>
+    rows.some(r => r.permission === "locations.archive") && !rows.some(r => r.permission === "locations.delete")
+        ? [...rows, { permission: "locations.delete", scope: "COMPANY" }]
+        : rows
 // User.whatsappNumber, which every read of a person's whole row now carries
 // (CLIENT_PORTAL_PLAN.md §7, step 9a, PR 340).
 const WHATSAPP_NUMBER = "20270111000000_user_whatsapp_number"
@@ -171,6 +180,11 @@ const REVIEW_ACCESS_GRANTED = "20270127000000_access_review_permission"
 const SALARY_ADVANCE_POLICY = "20270130000000_salary_advance_policy"
 // Whether each person sees what's left of their permission hours (LATER_CHANGES_PLAN.md §7.18, PR 446).
 const PERMISSION_LEFT = "20270131000000_permission_left_shown"
+// Deleting a location, a permission of its own, given to every role and
+// template with Archive and restore locations (LATER_CHANGES_PLAN.md §7.21, PR
+// 450). Not run with the others: it reads Archive and restore locations, which
+// a role has only once the split (SPLIT_GRANTED) wrote it, as in production.
+const LOCATION_DELETE_GRANTED = "20270202000000_location_delete_permission"
 // Given to a new company's built-in roles only: no migration gives it to the
 // companies there before it, as none was when it came (CLIENT_PORTAL_PLAN.md
 // §9, §12 step 10d, skipped on 2026-11-20; PR 348).
@@ -310,8 +324,9 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
                 for (const builtIn of ["ADMIN", "TEAM_LEADER", "EMPLOYEE"] as const) {
                     // As the grant for companies already there writes them:
                     // clients.manage, which the migrations gave the Admin, and
-                    // the others split since, as their parts (PR 385).
-                    const grants = grantsFromRows(asParts(rows.filter(r => r.companyId === company && r.builtIn === builtIn)))
+                    // the others split since, as their parts (PR 385); and
+                    // with what's given since to whoever holds a part (PR 450).
+                    const grants = grantsFromRows(withLaterGrants(asParts(rows.filter(r => r.companyId === company && r.builtIn === builtIn))))
                     const now = Object.fromEntries(Object.entries(BUILT_IN_GRANTS[builtIn]).filter(([permission]) => !GRANTED_LATER.includes(permission)))
                     expect(grants, `${company} ${builtIn}`).toEqual(now)
                 }
@@ -1416,6 +1431,46 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
             } finally {
                 await db.query(`DELETE FROM "Role" WHERE id IN ('r-gives', 'r-other')`)
                 await db.query(`DELETE FROM "RoleTemplate" WHERE id IN ('t-gives', 't-other')`)
+            }
+        })
+
+        it("Delete locations is given to every role and template with Archive and restore locations, once, by its migration (PR 450)", async () => {
+            const versions = async () => Object.fromEntries((await db.query(`SELECT id, version FROM "Role" WHERE "companyId" = 'c1'`)).rows.map(r => [r.id, r.version]))
+            const admins = async (permission: string) => (await db.query(`SELECT count(*)::int AS n FROM "RoleGrant" g JOIN "Role" r ON r.id = g."roleId" WHERE r."builtIn" = 'ADMIN' AND g.permission = $1 AND g.scope = 'COMPANY'`, [permission])).rows[0].n
+            try {
+                // As in production: after the split, which wrote Archive and
+                // restore locations where Manage locations was (run again, it
+                // finds nothing). The Admin roles holding it then are given
+                // Delete locations, the built-in companies' among them.
+                await db.query(sql(SPLIT_GRANTED))
+                const archiving = await admins("locations.archive")
+                expect(archiving).toBeGreaterThanOrEqual(2)
+                await db.query(sql(LOCATION_DELETE_GRANTED))
+                expect(await admins("locations.delete")).toBe(archiving)
+                expect((await db.query(`SELECT g.scope FROM "RoleGrant" g JOIN "Role" r ON r.id = g."roleId" WHERE r."companyId" = 'c1' AND r."builtIn" = 'ADMIN' AND g.permission = 'locations.delete'`)).rows).toEqual([{ scope: "COMPANY" }])
+                await db.query(`INSERT INTO "Role"(id, "companyId", name, "baseRole", "updatedAt") VALUES ('r-archives', 'c1', 'Archives places', 'EMPLOYEE', now()), ('r-edits', 'c1', 'Edits places', 'EMPLOYEE', now())`)
+                await db.query(`INSERT INTO "RoleGrant"("roleId", permission, scope) VALUES ('r-archives', 'locations.view', 'COMPANY'), ('r-archives', 'locations.archive', 'COMPANY'), ('r-edits', 'locations.view', 'COMPANY'), ('r-edits', 'locations.edit', 'COMPANY')`)
+                await db.query(`INSERT INTO "RoleTemplate"(id, name, "baseRole", grants, "updatedAt") VALUES
+                    ('t-archives', 'Archives places (test)', 'EMPLOYEE', '[{"permission":"locations.view","scope":"COMPANY"},{"permission":"locations.archive","scope":"COMPANY"}]', now()),
+                    ('t-edits', 'Edits places (test)', 'EMPLOYEE', '[{"permission":"locations.view","scope":"COMPANY"},{"permission":"locations.edit","scope":"COMPANY"}]', now())`)
+                const was = await versions()
+                await db.query(sql(LOCATION_DELETE_GRANTED))
+                const grants = async (role: string) => (await db.query(`SELECT permission, scope FROM "RoleGrant" WHERE "roleId" = $1 ORDER BY permission`, [role])).rows
+                expect(await grants("r-archives")).toContainEqual({ permission: "locations.delete", scope: "COMPANY" })
+                expect(await grants("r-edits")).not.toContainEqual(expect.objectContaining({ permission: "locations.delete" }))
+                const template = async (id: string) => (await db.query(`SELECT grants FROM "RoleTemplate" WHERE id = $1`, [id])).rows[0].grants
+                expect(await template("t-archives")).toContainEqual({ permission: "locations.delete", scope: "COMPANY" })
+                expect(await template("t-edits")).not.toContainEqual(expect.objectContaining({ permission: "locations.delete" }))
+                // Only the role it changed reloads: the Admin role had it already.
+                const now = await versions()
+                expect(Object.keys(now).filter(id => now[id] !== was[id])).toEqual(["r-archives"])
+                // Run again, it changes nothing.
+                await db.query(sql(LOCATION_DELETE_GRANTED))
+                expect(await versions()).toEqual(now)
+                expect((await template("t-archives")).filter((g: { permission: string }) => g.permission === "locations.delete")).toHaveLength(1)
+            } finally {
+                await db.query(`DELETE FROM "Role" WHERE id IN ('r-archives', 'r-edits')`)
+                await db.query(`DELETE FROM "RoleTemplate" WHERE id IN ('t-archives', 't-edits')`)
             }
         })
     })

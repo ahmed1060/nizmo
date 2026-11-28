@@ -264,6 +264,7 @@ them, as today.
 | | `locations.create` | Add a location, on the Locations page, a client's page or the task form; implies `locations.view` (named `locations.add` until #378) | `POST /locations` |
 | | `locations.edit` | Change a location's name, pin and radius, make one its client's HQ, and change a client's HQ in the client form (#377, split from `locations.manage`, `LATER_CHANGES_PLAN.md` §2) | `PUT /locations`, `PUT /clients` with a changed HQ |
 | | `locations.archive` | Archive a location, and restore one (#377) | `PUT /locations` with `archived` |
+| | `locations.delete` | Delete a location no task has used, never a client's HQ; implies `locations.view`. Every role with `locations.archive` was given it (LATER_CHANGES_PLAN.md §7.21, #450) | `DELETE /locations` |
 | | `locations.manage` | Retired (#386): split into the two above (#377), and the grant for companies already there (#385) wrote it as them in every role and template | — |
 | | `locations.add` | Retired (#386): renamed `locations.create` (#378), as a split into one, and the grant for companies already there (#385) wrote it as `locations.create` in every role and template | — |
 | **Client portal** | `tax.view` | See a client's tax position on its page, and its tax position statement, in a company whose package has the client portal — implies `clients.view` (`CLIENT_PORTAL_PLAN.md` §8, §9) | `GET /tax-claims`; the page `/dashboard/clients/[id]/tax-statement` |
