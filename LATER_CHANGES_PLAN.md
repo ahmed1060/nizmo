@@ -2446,9 +2446,19 @@ can only be archived.
    On the live database (read-only, 28 November), no task uses any of
    the locations that aren't archived, so each of the four shared ones
    may be deleted.
-3. **Who:** whoever may archive locations (locations.archive), as both
-   take one off the list. Its name in the roles says so: Archive, restore
-   and delete locations. No new permission, so no role changes.
+3. **Who:** whoever may delete locations, a permission of its own,
+   locations.delete (Delete locations), beside locations.archive. The
+   owner, asked whether it should be: "Get its own as the archive and
+   delete are separate things". Each menu item is for whoever holds its
+   own: holding only one, the other isn't offered, and the server asks
+   for it.
+   - Its migration gives it to every role and role template holding
+     locations.archive, the built-in Admin among them, so whoever could
+     archive locations can still delete them until it's unticked. The
+     roles it changes reload once.
+   - locations.archive keeps its name, Archive and restore locations.
+   - Not high-risk, as clients.delete isn't: only a location nothing
+     uses is deleted.
 4. **The server checks it again,** holding the location's row: a task
    added at it meanwhile keeps it, and it's refused with why, in the
    page's language. A task added at it while it's being deleted waits,
@@ -3301,3 +3311,8 @@ or editing the location", showing the Edit location form.
   takes the default. The server sends a location's radius only to
   whoever may edit locations, and the default only to whoever may add or
   edit them. 21 more controls, each caught by a test.
+- **2026-11-28:** §7.21, at the owner's ask: deleting a location is a
+  permission of its own, locations.delete (Delete locations), not
+  locations.archive's. Its migration gives it to every role and template
+  holding locations.archive; locations.archive is Archive and restore
+  locations again. In #450. `DESIGN.md` first, in its own commit.
